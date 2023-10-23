@@ -1,6 +1,6 @@
 import torch.nn as nn
 
-from cnn import CNN
+from models.cnn import CNN
 
 
 class BidirectionalLSTM(nn.Module):

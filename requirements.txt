@@ -1,5 +1,6 @@
 lmdb
 numpy
+pandas
 Pillow
 six
 torch

@@ -11,6 +11,8 @@ import six
 import sys
 from PIL import Image
 import numpy as np
+import pandas as pd
+import os
 
 
 class lmdbDataset(Dataset):
@@ -66,6 +68,23 @@ class lmdbDataset(Dataset):
         return (img, label)
 
 
+class kapalaDataset(Dataset):
+
+    def __init__(self, image_csv, root='', transform=None, target_transform=None):
+        super(kapalaDataset, self).__init__()
+
+        self.data = pd.read_csv(image_csv)
+        self.root = root
+        self.transform = transform
+        self.target_transform = target_transform
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, index):
+        return os.path.join(self.root, self.data['image'].iloc[index]), self.data['text'].iloc[index]
+
+
 class resizeNormalize(object):
 
     def __init__(self, size, interpolation=Image.BILINEAR):
@@ -92,12 +111,12 @@ class randomSequentialSampler(sampler.Sampler):
         index = torch.LongTensor(len(self)).fill_(0)
         for i in range(n_batch):
             random_start = random.randint(0, len(self) - self.batch_size)
-            batch_index = random_start + torch.range(0, self.batch_size - 1)
+            batch_index = random_start + torch.arange(0, self.batch_size)
             index[i * self.batch_size:(i + 1) * self.batch_size] = batch_index
         # deal with tail
         if tail:
             random_start = random.randint(0, len(self) - self.batch_size)
-            tail_index = random_start + torch.range(0, tail - 1)
+            tail_index = random_start + torch.arange(0, tail)
             index[(i + 1) * self.batch_size:] = tail_index
 
         return iter(index)

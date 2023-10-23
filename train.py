@@ -4,12 +4,11 @@ from __future__ import division
 import argparse
 import random
 import torch
-import torch.backends.cudnn as cudnn
-import torch.optim as optim
+from torch import nn, optim
+from torch.backends import cudnn
 import torch.utils.data
 from torch.autograd import Variable
 import numpy as np
-from warpctc_pytorch import CTCLoss
 import os
 import utils
 import dataset
@@ -17,8 +16,8 @@ import dataset
 import models.crnn as crnn
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--trainRoot', required=True, help='path to dataset')
-parser.add_argument('--valRoot', required=True, help='path to dataset')
+parser.add_argument('--trainRoot', default='../dataset/training_data/images/', help='path to dataset')
+parser.add_argument('--valRoot', default='../dataset/training_data/images/', help='path to dataset')
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=2)
 parser.add_argument('--batchSize', type=int, default=64, help='input batch size')
 parser.add_argument('--imgH', type=int, default=32, help='the height of the input image to network')
@@ -57,7 +56,7 @@ cudnn.benchmark = True
 if torch.cuda.is_available() and not opt.cuda:
     print("WARNING: You have a CUDA device, so you should probably run with --cuda")
 
-train_dataset = dataset.lmdbDataset(root=opt.trainroot)
+train_dataset = dataset.kapalaDataset(image_csv='../dataset/training_data/train.csv', root=opt.trainRoot)
 assert train_dataset
 if not opt.random_sample:
     sampler = dataset.randomSequentialSampler(train_dataset, opt.batchSize)
@@ -65,17 +64,17 @@ else:
     sampler = None
 train_loader = torch.utils.data.DataLoader(
     train_dataset, batch_size=opt.batchSize,
-    shuffle=True, sampler=sampler,
+    sampler=sampler,
     num_workers=int(opt.workers),
     collate_fn=dataset.alignCollate(imgH=opt.imgH, imgW=opt.imgW, keep_ratio=opt.keep_ratio))
-test_dataset = dataset.lmdbDataset(
-    root=opt.valroot, transform=dataset.resizeNormalize((100, 32)))
+test_dataset = dataset.kapalaDataset(
+    image_csv='../dataset/training_data/val.csv', root=opt.valRoot, transform=dataset.resizeNormalize((100, 32)))
 
 nclass = len(opt.alphabet) + 1
 nc = 1
 
 converter = utils.strLabelConverter(opt.alphabet)
-criterion = CTCLoss()
+criterion = nn.CTCLoss()
 
 
 # custom weights initialization called on crnn
@@ -139,7 +138,7 @@ def val(net, dataset, criterion, max_iter=100):
 
     max_iter = min(max_iter, len(data_loader))
     for i in range(max_iter):
-        data = val_iter.next()
+        data = next(val_iter)
         i += 1
         cpu_images, cpu_texts = data
         batch_size = cpu_images.size(0)
@@ -170,7 +169,7 @@ def val(net, dataset, criterion, max_iter=100):
 
 
 def trainBatch(net, criterion, optimizer):
-    data = train_iter.next()
+    data = next(train_iter)
     cpu_images, cpu_texts = data
     batch_size = cpu_images.size(0)
     utils.loadData(image, cpu_images)

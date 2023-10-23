@@ -38,5 +38,3 @@ class CNN(nn.Sequential):
                         nn.MaxPool2d((2, 2), (2, 1), (0, 1)))  # 512x2x16
         convRelu(6, True)  # 512x1x16
 
-        return self
-
